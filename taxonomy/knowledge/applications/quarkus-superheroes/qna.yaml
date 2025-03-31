@@ -255,6 +255,6 @@ seed_examples:
 document_outline: Documentation of the Quarkus Super Heroes application
 document:
   repo: https://github.com/mamurak/ilab-sre-assistant.git
-  commit: 
+  commit: 556331a76ad4475a00944d87447648e538e14c64
   patterns:
     - "source_docs/quarkus-super-heroes.md"
