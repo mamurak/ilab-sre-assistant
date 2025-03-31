@@ -1,0 +1,397 @@
+version: 3
+domain: Software applications
+created_by: Max Murakami
+seed_examples:
+  - context: |
+      ### 2. Using Kafka in KRaft mode
+
+      KRaft (Kafka Raft metadata) mode replaces Kafka’s dependency on
+       ZooKeeper for cluster management.
+      KRaft mode simplifies the deployment and management of Kafka clusters by
+       bringing metadata management and coordination of clusters into Kafka.
+
+      Kafka in KRaft mode is designed to offer enhanced reliability,
+       scalability, and throughput.
+      Metadata operations become more efficient as they are directly
+       integrated.
+      And by removing the need to maintain a ZooKeeper cluster, there’s also a
+       reduction in the operational and security overhead.
+
+      To deploy a Kafka cluster in KRaft mode, you must use Kafka and
+       KafkaNodePool custom resources.
+      The Kafka resource using KRaft mode must also have the annotations
+       strimzi.io/kraft: enabled and strimzi.io/node-pools: enabled.
+      For more details and examples, see Deploying a Kafka cluster in KRaft
+       mode.
+
+      Through node pool configuration using KafkaNodePool resources, nodes are
+       assigned the role of broker, controller, or both:
+
+      - Controller nodes operate in the control plane to manage cluster
+        metadata and the state of the cluster using a Raft-based consensus
+        protocol.
+      - Broker nodes operate in the data plane to manage the streaming of
+        messages, receiving and storing data in topic partitions.
+      - Dual-role nodes fulfill the responsibilities of controllers and
+        brokers.
+
+      Controllers use a metadata log, stored as a single-partition topic
+       (\_\_cluster\_metadata) on every node, which records the state of the
+       cluster.
+      When requests are made to change the cluster configuration, an active
+       (lead) controller manages updates to the metadata log, and follower
+       controllers replicate these updates.
+      The metadata log stores information on brokers, replicas, topics, and
+       partitions, including the state of in-sync replicas and partition
+       leadership.
+      Kafka uses this metadata to coordinate changes and manage the cluster
+       effectively.
+    questions_and_answers:
+      - question: |
+          What's the purpose of KRaft mode?
+        answer: |
+          The purpose of KRaft mode is to remove Kafka's dependency on
+           Zookeeper and simplify the overall operation and management of
+           Kafka.
+      - question: |
+          What type of Kafka nodes are available in KRaft mode?
+        answer: |
+          In KRaft mode, Kafka nodes can be either brokers, controllers, or
+           both (dual-role nodes).
+      - question: |
+          How can I set a node up as a dual-role node?
+        answer: |
+          The setup and declaration of node roles is done through KafkaNodePool
+           resources.
+  - context: |
+      #### 11.13. Configuring CPU and memory resource limits and requests
+
+      By default, the Strimzi Cluster Operator does not specify CPU and memory
+       resource requests and limits for its deployed operands.
+      Ensuring an adequate allocation of resources is crucial for maintaining
+       stability and achieving optimal performance in Kafka.
+      The ideal resource allocation depends on your specific requirements and
+       use cases.
+
+      It is recommended to configure CPU and memory resources for each
+       container by setting appropriate requests and limits.
+
+      #### 11.14. Restrictions on Kubernetes labels
+
+      Kubernetes labels make it easier to organize, manage, and discover
+       Kubernetes resources within your applications.
+      The Cluster Operator is responsible for applying the following Kubernetes
+       labels to the operands it deploys.
+      These labels cannot be overridden through template configuration of
+       Strimzi resources:
+
+      - app.kubernetes.io/name: Identifies the component type within Strimzi,
+        such as kafka, zookeeper,  and`cruise-control`.
+      - app.kubernetes.io/instance: Represents the name of the custom resource
+        to which the operand belongs to. For instance, if a Kafka custom
+        resource is named my-cluster, this label will bear that name on the
+        associated pods.
+      - app.kubernetes.io/part-of: Similar to app.kubernetes.io/instance, but
+        prefixed with strimzi-.
+      - app.kubernetes.io/managed-by: Defines the application responsible for
+        managing the operand, such as strimzi-cluster-operator or
+        strimzi-user-operator.
+
+      ```
+      apiVersion: kafka.strimzi.io/v1beta2
+      kind: Pod
+      metadata:
+        name: my-cluster-kafka-0
+        labels:
+          app.kubernetes.io/instance: my-cluster
+          app.kubernetes.io/managed-by: strimzi-cluster-operator
+          app.kubernetes.io/name: kafka
+          app.kubernetes.io/part-of: strimzi-my-cluster
+      spec:
+        # ...
+      ```
+    questions_and_answers:
+      - question: |
+          What are the default compute requests and limits within clusters
+           provisioned through Strimzi?
+        answer: |
+          By default, there are no compute requests and limits within clusters
+           provisioned through Strimzi.
+      - question: |
+          Is it possible to override the `app.kubernetes.io/instance` label in
+           resources deployed through Strimzi?
+        answer: |
+          No, the `app.kubernetes.io/instance` label is managed by Strimzi and
+           cannot be overriden.
+      - question: |
+          Which Kubernetes labels are enforced by the Strimzi operator?
+        answer: |
+          The Strimzi cluster operator manages and applies these labels:
+          - app.kubernetes.io/instance
+          - app.kubernetes.io/managed-by
+          - app.kubernetes.io/name
+          - app.kubernetes.io/part-of
+  - context: |
+      ### 14. Setting up client access to a Kafka cluster
+
+      After you have deployed Strimzi, you can set up client access to your
+       Kafka cluster.
+      To verify the deployment, you can deploy example producer and consumer
+       clients.
+      Otherwise, create listeners that provide client access within or outside
+       the Kubernetes cluster.
+
+      #### 14.1. Deploying example clients
+
+      Send and receive messages from a Kafka cluster installed on Kubernetes.
+
+      This procedure describes how to deploy Kafka clients to the Kubernetes
+       cluster, then produce and consume messages to test your installation.
+      The clients are deployed using the Kafka container image.
+
+      Prerequisites
+
+      - The Kafka cluster is available for the clients.
+
+      Procedure
+
+      1. Deploy a Kafka producer.
+
+      This example deploys a Kafka producer that connects to the Kafka cluster
+       my-cluster.
+
+      A topic named my-topic is created.
+
+      Deploying a Kafka producer to Kubernetes
+      ```
+      kubectl run kafka-producer -ti
+       --image=quay.io/strimzi/kafka:0.45.0-kafka-3.9.0 --rm=true
+       --restart=Never -- bin/kafka-console-producer.sh --bootstrap-server
+       my-cluster-kafka-bootstrap:9092 --topic my-topic
+      ```
+      2. Type a message into the console where the producer is running.
+      3. Press Enter to send the message.
+      4. Deploy a Kafka consumer.
+
+      The consumer should consume messages produced to my-topic in the Kafka
+       cluster my-cluster.
+
+      Deploying a Kafka consumer to Kubernetes
+      ```
+      kubectl run kafka-consumer -ti
+       --image=quay.io/strimzi/kafka:0.45.0-kafka-3.9.0 --rm=true
+       --restart=Never -- bin/kafka-console-consumer.sh --bootstrap-server
+       my-cluster-kafka-bootstrap:9092 --topic my-topic --from-beginning
+      ```
+      5. Confirm that you see the incoming messages in the consumer console.
+    questions_and_answers:
+      - question: |
+          How can I validate that a deployed Strimzi cluster is functional?
+        answer: |
+          After deploying a Strimzi cluster, configure client access and test
+           the cluster via sample producers, consumers, and listeners.
+      - question: |
+          How can I quickly set up a sample Kafka producer to test my Strimzi
+           cluster?
+        answer: |
+          The following CLI command deploys a sample Kafka producer within the
+           Kubernetes cluster:
+          ```
+          kubectl run kafka-producer -ti
+           --image=quay.io/strimzi/kafka:0.45.0-kafka-3.9.0 --rm=true
+           --restart=Never -- bin/kafka-console-producer.sh --bootstrap-server
+           my-cluster-kafka-bootstrap:9092 --topic my-topic
+          ```
+      - question: |
+          What are the steps of a Kafka smoke test?
+        answer: |
+          To ensure that your Kafka cluster works, try the following steps:
+          1. Set up client access.
+          2. Deploy a Kafka producer.
+          3. Define a message that the producer should submit to the cluster.
+          4. Have the producer submit the message to the cluster.
+          5. Provision a Kafka consumer.
+          6. Have the consumer read messages from the cluster. Confirm the
+             producer's message is read.
+  - context: |
+      ### 18. Applying security context to Strimzi pods and containers
+
+      Security context defines constraints on pods and containers.
+      By specifying a security context, pods and containers only have the
+       permissions they need.
+      For example, permissions can control runtime operations or access to
+       resources.
+
+      #### 18.1. How to configure security context
+
+      Use security provider plugins or template configuration to apply security
+       context to Strimzi pods and containers.
+
+      Apply security context at the pod or container level:
+
+      Pod-level security context is applied to all containers in a specific
+       pod.
+
+      Container-level security context is applied to a specific container.
+
+      With Strimzi, security context is applied through one or both of the
+       following methods:
+
+      Use template configuration of Strimzi custom resources to specify
+       security context at the pod or container level.
+
+      Use pod security provider plugins to automatically set security context
+       across all pods and containers using preconfigured settings.
+
+      Pod security providers offer a simpler alternative to specifying security
+       context through template configuration.
+      You can use both approaches.
+      The template approach has a higher priority.
+      Security context configured through template properties overrides the
+       configuration set by pod security providers.
+      So you might use pod security providers to automatically configure the
+       security context for most containers.
+      And also use template configuration to set container-specific security
+       context where needed.
+
+      The template approach provides flexibility, but it also means you have to
+       configure security context in numerous places to capture the security
+       you want for all pods and containers.
+      For example, you’ll need to apply the configuration to each pod in a
+       Kafka cluster, as well as the pods for deployments of other Kafka
+       components.
+
+      To avoid repeating the same configuration, you can use the following pod
+       security provider plugins so that the security configuration is in one
+       place.
+
+      The Baseline Provider is based on the Kubernetes baseline security
+       profile. The baseline profile prevents privilege escalations and defines
+       other standard access controls and limitations.
+
+      The Restricted Provider is based on the Kubernetes restricted security
+       profile. The restricted profile is more restrictive than the baseline
+       profile, and is used where security needs to be tighter.
+
+      For more information on the Kubernetes security profiles, see Pod
+       security standards.
+    questions_and_answers:
+      - question: |
+          Why should I use security contexts within Strimzi pods?
+        answer: |
+          Security contexts are useful to constrain the permissions of
+           processes within workloads and thereby decrease the attack surface
+           within the environment.
+      - question: |
+          How can I set up security contexts within my Strimzi cluster?
+        answer: |
+          You can use either security provider plugins or apply template
+           configurations in order to configure security contexts within your
+           Strimzi cluster.
+      - question: |
+          How can I ensure that privilege escalations are prevented within
+           Strimzi pods?
+        answer: |
+          The easiest way is to use the Baseline or Restricted Security
+           Provider to secure your Strimzi workloads.
+  - context: |
+      ### 32. Cluster recovery from persistent volumes
+
+      You can recover a Kafka cluster from persistent volumes (PVs) if they are
+       still present.
+
+      #### 32.1. Cluster recovery scenarios
+
+      Recovering from PVs is possible in the following scenarios:
+
+      - Unintentional deletion of a namespace
+      - Loss of an entire Kubernetes cluster while PVs remain in the
+        infrastructure
+
+      The recovery procedure for both scenarios is to recreate the original
+       PersistentVolumeClaim (PVC) resources.
+
+      ##### 32.1.1. Recovering from namespace deletion
+
+      When you delete a namespace, all resources within that
+       namespace—including PVCs, pods, and services—are deleted.
+      If the reclaimPolicy for the PV resource specification is set to Retain,
+       the PV retains its data and is not deleted.
+      This configuration allows you to recover from namespace deletion.
+
+      PV configuration to retain data
+
+      ```
+      apiVersion: v1
+      kind: PersistentVolume
+      # ...
+      spec:
+        # ...
+        persistentVolumeReclaimPolicy: Retain
+      ```
+
+      Alternatively, PVs can inherit the reclaim policy from an associated
+       storage class.
+      Storage classes are used for dynamic volume allocation.
+
+      By configuring the reclaimPolicy property for the storage class, PVs
+       created with this class use the specified reclaim policy.
+      The storage class is assigned to the PV using the storageClassName
+       property.
+
+      Storage class configuration to retain data
+
+      ```
+      apiVersion: v1
+      kind: StorageClass
+      metadata:
+        name: gp2-retain
+      parameters:
+        # ...
+      # ...
+      reclaimPolicy: Retain
+      ```
+
+      Storage class specified for PV
+
+      ```
+      apiVersion: v1
+      kind: PersistentVolume
+      # ...
+      spec:
+        # ...
+        storageClassName: gp2-retain
+      ```
+
+    questions_and_answers:
+      - question: |
+          Under which circumstances can I restore the data within my Kafka
+           cluster after a catastrophic failure?
+        answer: |
+          As long as the underlying persistent volumes (PVs) that the Kafka
+           cluster consumed are still present, the cluster can be restored.
+      - question: |
+          How do I ensure that my Kafka clusters can be recovered after
+           accidental deletion?
+        answer: |
+          Set the reclaim policy of the cluster's PVs to `Retain` to ensure
+           they're preserved after accidental cluster and PVC deletion.
+      - question: |
+          How does a recoverable persistent volume look like?
+        answer: |
+          A recoverable persistent volume has a `persistentVolumeReclaimPolicy`
+           of `Retain`:
+          ```
+          apiVersion: v1
+          kind: PersistentVolume
+          # ...
+          spec:
+            # ...
+            persistentVolumeReclaimPolicy: Retain
+          ```
+document_outline: Deploying Kafka through Strimzi
+document:
+  repo: https://github.com/mamurak/ilab-sre-assistant.git
+  commit: 
+  patterns:
+    - "source_docs/strimzi-deploying.md"
